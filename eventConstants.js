@@ -1,0 +1,17 @@
+const EVENT_NAMES = {
+  LOGIN_SUCCESS: 'login_success',
+  LOGIN_FAILED: 'login_failed',
+  SIGNUP_SUCCESS: 'signup_success',
+  SIGNUP_FAILED: 'signup_failed',
+  COOLDOWN: 'cooldown',
+  INITIAL_CANVAS: 'initial_canvas',
+  UPDATE_PIXEL: 'update_pixel',
+  DRAW_PIXEL: 'draw_pixel',
+  DISCONNECT: 'disconnect',
+  CONNECT: 'connect',
+  CONNECT_ERROR: 'connect_error',
+};
+
+module.exports = {
+  EVENT_NAMES,
+};

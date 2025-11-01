@@ -6,6 +6,8 @@ const redis = require('redis');
 const socketIo = require('socket.io');
 const { createClient } = require('@supabase/supabase-js');
 const { supabaseUrl, supabaseAnonKey } = require('./config');
+const { EVENT_NAMES } = require('./eventConstants');
+const { ERROR_MESSAGES } = require('./errorMessages');
 
 console.log('Supabase URL:', supabaseUrl);
 console.log('Supabase Anon Key:', supabaseAnonKey);
@@ -15,7 +17,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const redisClient = redis.createClient();
 
 redisClient.on('error', (err) => {
-  console.log('Redis error: ', err);
+  console.log(ERROR_MESSAGES.REDIS_ERROR, err);
 });
 
 // Connect to Redis
@@ -44,7 +46,7 @@ const COOLDOWN_SECONDS = 20;
 io.on('connection', async (socket) => {
   console.log('a user connected');
 
-  socket.on('login', async (username) => {
+  socket.on(EVENT_NAMES.LOGIN, async (username) => {
     console.log("Login attempt for username:", username);
     const { data, error } = await supabase
       .from('users')
@@ -55,7 +57,7 @@ io.on('connection', async (socket) => {
 
     if (data) {
       socket.username = username;
-      socket.emit('login_success');
+      socket.emit(EVENT_NAMES.LOGIN_SUCCESS);
 
       // Calculate and send initial cooldown using the existing 'cooldown' event
       const lastDrawTime = await redisClient.get(`last_draw_time:${socket.username}`);
@@ -63,15 +65,14 @@ io.on('connection', async (socket) => {
       let remainingCooldown = 0;
       if (lastDrawTime && now - lastDrawTime < COOLDOWN_SECONDS * 1000) {
         remainingCooldown = Math.ceil((COOLDOWN_SECONDS * 1000 - (now - lastDrawTime)) / 1000);
-      }
-      socket.emit('cooldown', remainingCooldown);
-
+            socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
     } else {
-      socket.emit('login_failed');
+      socket.emit(EVENT_NAMES.LOGIN_FAILED);
     }
+  }
   });
 
-  socket.on('signup', async (username) => {
+  socket.on(EVENT_NAMES.SIGNUP, async (username) => {
     console.log("Signup attempt for username:", username);
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
@@ -80,7 +81,7 @@ io.on('connection', async (socket) => {
       .single();
 
     if (existingUser) {
-      socket.emit('signup_failed', 'Username already taken.');
+      socket.emit(EVENT_NAMES.SIGNUP_FAILED, ERROR_MESSAGES.USERNAME_TAKEN);
       return;
     }
 
@@ -90,10 +91,10 @@ io.on('connection', async (socket) => {
 
     if (error) {
       console.log('Error signing up user:', error);
-      socket.emit('signup_failed', 'An error occurred during signup.');
+      socket.emit(EVENT_NAMES.SIGNUP_FAILED, ERROR_MESSAGES.SIGNUP_ERROR);
     } else {
       socket.username = username;
-      socket.emit('signup_success');
+      socket.emit(EVENT_NAMES.SIGNUP_SUCCESS);
     }
   });
 
@@ -102,9 +103,9 @@ io.on('connection', async (socket) => {
   for (const key in canvas) {
     parsedCanvas[key] = JSON.parse(canvas[key]);
   }
-  socket.emit('initial_canvas', parsedCanvas);
+  socket.emit(EVENT_NAMES.INITIAL_CANVAS, parsedCanvas);
 
-  socket.on('draw_pixel', async (data) => {
+  socket.on(EVENT_NAMES.DRAW_PIXEL, async (data) => {
     if (!socket.username) {
       return;
     }
@@ -115,7 +116,7 @@ io.on('connection', async (socket) => {
     const now = Date.now();
     if (lastDrawTime && now - lastDrawTime < COOLDOWN_SECONDS * 1000) {
       const remainingCooldown = Math.ceil((COOLDOWN_SECONDS * 1000 - (now - lastDrawTime)) / 1000);
-      socket.emit('cooldown', remainingCooldown);
+      socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
       return;
     }
 
@@ -136,13 +137,13 @@ io.on('connection', async (socket) => {
         const pixelData = JSON.stringify({ color, timestamp });
         await redisClient.hSet('canvas', `${x}:${y}`, pixelData);
         await redisClient.set(`last_draw_time:${socket.username}`, now);
-        socket.broadcast.emit('update_pixel', { x, y, color, timestamp });
-        socket.emit('cooldown', COOLDOWN_SECONDS);
+        socket.broadcast.emit(EVENT_NAMES.UPDATE_PIXEL, { x, y, color, timestamp });
+        socket.emit(EVENT_NAMES.COOLDOWN, COOLDOWN_SECONDS);
       }
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.on(EVENT_NAMES.DISCONNECT, () => {
     console.log('user disconnected');
   });
 });
@@ -163,7 +164,7 @@ server.listen(PORT, () => {
       .limit(1);
 
     if (fetchError) {
-      console.log('Error fetching latest backup from Supabase:', fetchError);
+      console.log(ERROR_MESSAGES.BACKUP_FETCH_ERROR, fetchError);
       return;
     }
 
@@ -179,7 +180,7 @@ server.listen(PORT, () => {
       ]);
 
     if (error) {
-      console.log('Error backing up canvas to Supabase:', error);
+      console.log(ERROR_MESSAGES.BACKUP_ERROR, error);
     } else {
       console.log('Canvas backed up to Supabase at', new Date().toISOString());
     }
