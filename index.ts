@@ -1,20 +1,30 @@
-import "dotenv/config";
+import dotenv from 'dotenv';
+
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+if (nodeEnv === 'production') {
+  dotenv.config({ path: '.env.production' });
+  console.log('Loaded .env.production');
+  console.log('Directly from process.env: SUPABASE_URL =', process.env.SUPABASE_URL);
+  console.log('Directly from process.env: SUPABASE_ANON_KEY =', process.env.SUPABASE_ANON_KEY);
+} else {
+  dotenv.config({ path: '.env.development' });
+  console.log('Loaded .env.development');
+  console.log('Directly from process.env: SUPABASE_URL =', process.env.SUPABASE_URL);
+  console.log('Directly from process.env: SUPABASE_ANON_KEY =', process.env.SUPABASE_ANON_KEY);
+}
 
 import * as Express from "express";
 import http from "http";
 import * as Supabase from "@supabase/supabase-js";
 import * as Redis from "redis";
 import { Server, Socket } from "socket.io";
-import { supabaseUrl, supabaseAnonKey } from "./config.ts";
 import { EVENT_NAMES } from "./eventConstants.ts";
 import { ERROR_MESSAGES } from "./errorMessages.ts";
 
-console.log("Supabase URL:", supabaseUrl);
-console.log("Supabase Anon Key:", supabaseAnonKey);
-
 const supabase: Supabase.SupabaseClient = Supabase.createClient(
-  supabaseUrl,
-  supabaseAnonKey,
+  process.env.SUPABASE_URL ?? "",
+  process.env.SUPABASE_ANON_KEY ?? "",
 );
 
 const redisClient: Redis.RedisClientType = Redis.createClient();
