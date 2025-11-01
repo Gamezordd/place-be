@@ -5,13 +5,9 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 if (nodeEnv === 'production') {
   dotenv.config({ path: '.env.production' });
   console.log('Loaded .env.production');
-  console.log('Directly from process.env: SUPABASE_URL =', process.env.SUPABASE_URL);
-  console.log('Directly from process.env: SUPABASE_ANON_KEY =', process.env.SUPABASE_ANON_KEY);
 } else {
   dotenv.config({ path: '.env.development' });
   console.log('Loaded .env.development');
-  console.log('Directly from process.env: SUPABASE_URL =', process.env.SUPABASE_URL);
-  console.log('Directly from process.env: SUPABASE_ANON_KEY =', process.env.SUPABASE_ANON_KEY);
 }
 
 import * as Express from "express";
@@ -27,7 +23,9 @@ const supabase: Supabase.SupabaseClient = Supabase.createClient(
   process.env.SUPABASE_ANON_KEY ?? "",
 );
 
-const redisClient: Redis.RedisClientType = Redis.createClient();
+const redisClient: Redis.RedisClientType = Redis.createClient({
+  url: process.env.REDIS_URL,
+});
 
 redisClient.on("error", (err: Error) => {
   console.log(ERROR_MESSAGES.REDIS_ERROR, err);
