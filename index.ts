@@ -1,22 +1,25 @@
-require("dotenv").config();
+import "dotenv/config";
 
-const express = require("express");
-const http = require("http");
-const redis = require("redis");
-const socketIo = require("socket.io");
-const { createClient } = require("@supabase/supabase-js");
-const { supabaseUrl, supabaseAnonKey } = require("./config");
-const { EVENT_NAMES } = require("./eventConstants");
-const { ERROR_MESSAGES } = require("./errorMessages");
+import * as Express from "express";
+import http from "http";
+import * as Supabase from "@supabase/supabase-js";
+import * as Redis from "redis";
+import { Server, Socket } from "socket.io";
+import { supabaseUrl, supabaseAnonKey } from "./config.ts";
+import { EVENT_NAMES } from "./eventConstants.ts";
+import { ERROR_MESSAGES } from "./errorMessages.ts";
 
 console.log("Supabase URL:", supabaseUrl);
 console.log("Supabase Anon Key:", supabaseAnonKey);
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase: Supabase.SupabaseClient = Supabase.createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+);
 
-const redisClient = redis.createClient();
+const redisClient: Redis.RedisClientType = Redis.createClient();
 
-redisClient.on("error", (err) => {
+redisClient.on("error", (err: Error) => {
   console.log(ERROR_MESSAGES.REDIS_ERROR, err);
 });
 
@@ -26,27 +29,40 @@ redisClient.on("error", (err) => {
   console.log("Connected to Redis!");
 })();
 
-const app = express();
+const app = Express.default();
 const server = http.createServer(app);
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: {
     origin: "*",
   },
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT: number = parseInt(process.env.PORT || "3000", 10);
 
-app.get("/", (req, res) => {
+app.get("/", (req: Express.Request, res: Express.Response) => {
   res.send("<h1>Reddit Place Clone Backend</h1>");
 });
 
-const CANVAS_SIZE = 50;
-const COOLDOWN_SECONDS = 20;
+const CANVAS_SIZE: number = 50;
+const COOLDOWN_SECONDS: number = 20;
 
-io.on("connection", async (socket) => {
+interface Pixel {
+  color: string;
+  timestamp: number;
+}
+
+interface Canvas {
+  [key: string]: Pixel;
+}
+
+interface CustomSocket extends Socket {
+  username?: string;
+}
+
+io.on("connection", async (socket: CustomSocket) => {
   console.log("a user connected");
 
-  socket.on(EVENT_NAMES.LOGIN, async (username) => {
+  socket.on(EVENT_NAMES.LOGIN, async (username: string) => {
     console.log("Login attempt for username:", username);
     const { data, error } = await supabase
       .from("users")
@@ -59,23 +75,26 @@ io.on("connection", async (socket) => {
       socket.emit(EVENT_NAMES.LOGIN_SUCCESS);
 
       // Calculate and send initial cooldown using the existing 'cooldown' event
-      const lastDrawTime = await redisClient.get(
-        `last_draw_time:${socket.username}`
+      const lastDrawTimeStr = await redisClient.get(
+        `last_draw_time:${socket.username}`,
       );
+      const lastDrawTime = lastDrawTimeStr
+        ? parseInt(lastDrawTimeStr, 10)
+        : null;
       const now = Date.now();
       let remainingCooldown = 0;
       if (lastDrawTime && now - lastDrawTime < COOLDOWN_SECONDS * 1000) {
         remainingCooldown = Math.ceil(
-          (COOLDOWN_SECONDS * 1000 - (now - lastDrawTime)) / 1000
+          (COOLDOWN_SECONDS * 1000 - (now - lastDrawTime)) / 1000,
         );
-        socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
-      } else {
-        socket.emit(EVENT_NAMES.LOGIN_FAILED);
       }
+      socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
+    } else {
+      socket.emit(EVENT_NAMES.LOGIN_FAILED);
     }
   });
 
-  socket.on(EVENT_NAMES.SIGNUP, async (username) => {
+  socket.on(EVENT_NAMES.SIGNUP, async (username: string) => {
     console.log("Signup attempt for username:", username);
     const { data: existingUser, error: fetchError } = await supabase
       .from("users")
@@ -102,58 +121,68 @@ io.on("connection", async (socket) => {
   });
 
   const canvas = await redisClient.hGetAll("canvas");
-  const parsedCanvas = {};
+  const parsedCanvas: Canvas = {};
   for (const key in canvas) {
     parsedCanvas[key] = JSON.parse(canvas[key]);
   }
   socket.emit(EVENT_NAMES.INITIAL_CANVAS, parsedCanvas);
 
-  socket.on(EVENT_NAMES.DRAW_PIXEL, async (data) => {
-    if (!socket.username) {
-      return;
-    }
+  socket.on(
+    EVENT_NAMES.DRAW_PIXEL,
+    async (data: {
+      x: number;
+      y: number;
+      color: string;
+      timestamp: number;
+    }) => {
+      if (!socket.username) {
+        return;
+      }
 
-    const lastDrawTimeStr = await redisClient.get(
-      `last_draw_time:${socket.username}`
-    );
-    const lastDrawTime = lastDrawTimeStr ? parseInt(lastDrawTimeStr, 10) : null;
-
-    const now = Date.now();
-    if (lastDrawTime && now - lastDrawTime < COOLDOWN_SECONDS * 1000) {
-      const remainingCooldown = Math.ceil(
-        (COOLDOWN_SECONDS * 1000 - (now - lastDrawTime)) / 1000
+      const lastDrawTimeStr = await redisClient.get(
+        `last_draw_time:${socket.username}`,
       );
-      socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
-      return;
-    }
+      const lastDrawTime = lastDrawTimeStr
+        ? parseInt(lastDrawTimeStr, 10)
+        : null;
 
-    console.log("draw_pixel", data);
-    const { x, y, color, timestamp } = data;
-    if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
-      const existingPixel = await redisClient.hGet("canvas", `${x}:${y}`);
+      const now = Date.now();
+      if (lastDrawTime && now - lastDrawTime < COOLDOWN_SECONDS * 1000) {
+        const remainingCooldown = Math.ceil(
+          (COOLDOWN_SECONDS * 1000 - (now - lastDrawTime)) / 1000,
+        );
+        socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
+        return;
+      }
 
-      let shouldUpdate = true;
-      if (existingPixel) {
-        const parsedPixel = JSON.parse(existingPixel);
-        if (parsedPixel.timestamp && parsedPixel.timestamp > timestamp) {
-          shouldUpdate = false;
+      console.log("draw_pixel", data);
+      const { x, y, color, timestamp } = data;
+      if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+        const existingPixel = await redisClient.hGet("canvas", `${x}:${y}`);
+
+        let shouldUpdate = true;
+        if (existingPixel) {
+          const parsedPixel: Pixel = JSON.parse(existingPixel);
+          if (parsedPixel.timestamp && parsedPixel.timestamp > timestamp) {
+            shouldUpdate = false;
+          }
+        }
+
+        if (shouldUpdate) {
+          const pixelData = JSON.stringify({ color, timestamp });
+          await redisClient.hSet("canvas", `${x}:${y}`, pixelData);
+          await redisClient.set(`last_draw_time:${socket.username}`, now);
+          socket.broadcast.emit(EVENT_NAMES.UPDATE_PIXEL, {
+            x,
+            y,
+            color,
+            timestamp,
+          });
+          socket.emit(EVENT_NAMES.COOLDOWN, COOLDOWN_SECONDS);
         }
       }
-
-      if (shouldUpdate) {
-        const pixelData = JSON.stringify({ color, timestamp });
-        await redisClient.hSet("canvas", `${x}:${y}`, pixelData);
-        await redisClient.set(`last_draw_time:${socket.username}`, now);
-        socket.broadcast.emit(EVENT_NAMES.UPDATE_PIXEL, {
-          x,
-          y,
-          color,
-          timestamp,
-        });
-        socket.emit(EVENT_NAMES.COOLDOWN, COOLDOWN_SECONDS);
-      }
-    }
-  });
+    },
+  );
 
   socket.on(EVENT_NAMES.DISCONNECT, () => {
     console.log("user disconnected");
@@ -187,7 +216,7 @@ server.listen(PORT, () => {
     ) {
       console.log(
         "Canvas state unchanged, no backup needed at",
-        new Date().toISOString()
+        new Date().toISOString(),
       );
       return;
     }
