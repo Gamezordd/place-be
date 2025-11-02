@@ -39,8 +39,8 @@ redisClient.on("error", (err) => {
 })();
 
 const allowedOrigins = [
-  "localhost",
-  "vercel.app"
+  "http://localhost:5137",
+  "https://place-fe.vercel.app"
 ]
 
 const app = Express();
@@ -49,7 +49,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (allowedOrigins.some((allowedOrigin) => origin?.includes(allowedOrigin))) {
+      if (allowedOrigins.includes(origin)) {
         callback(null, true)
       } else {
         callback(new Error('Not allowed by CORS'), true)
