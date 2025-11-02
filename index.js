@@ -1,5 +1,5 @@
-import * as dotenv from "dotenv";
-import cors from "cors";
+const dotenv = require("dotenv");
+const cors = require("cors");
 
 const nodeEnv = process.env.NODE_ENV || "development";
 
@@ -11,13 +11,13 @@ if (nodeEnv === "production") {
   console.log("Loaded .env.development");
 }
 
-import Express from "express";
-import * as http from "http";
-import * as Supabase from "@supabase/supabase-js";
-import * as Redis from "redis";
-import { Server, Socket } from "socket.io";
-import{ EVENT_NAMES } from "./eventConstants.js";
-import { ERROR_MESSAGES } from "./errorMessages.js";
+const Express = require("express");
+const http = require("http");
+const Supabase = require("@supabase/supabase-js");
+const Redis = require("redis");
+const { Server, Socket } = require("socket.io");
+const { EVENT_NAMES } = require("./eventConstants.js");
+const { ERROR_MESSAGES } = require("./errorMessages.js");
 
 const supabase = Supabase.createClient(
   process.env.SUPABASE_URL ?? "",

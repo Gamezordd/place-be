@@ -1,4 +1,4 @@
-export const EVENT_NAMES = {
+module.exports = {
   LOGIN_SUCCESS: "login_success",
   LOGIN_FAILED: "login_failed",
   SIGNUP_SUCCESS: "signup_success",

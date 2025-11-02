@@ -1,4 +1,4 @@
-export const ERROR_MESSAGES = {
+module.exports = {
   REDIS_ERROR: "Redis error: ",
   USERNAME_TAKEN: "Username already taken.",
   SIGNUP_ERROR: "An error occurred during signup.",
