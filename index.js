@@ -16,8 +16,8 @@ const http = require("http");
 const Supabase = require("@supabase/supabase-js");
 const Redis = require("redis");
 const { Server, Socket } = require("socket.io");
-const { EVENT_NAMES } = require("./eventConstants.js");
-const { ERROR_MESSAGES } = require("./errorMessages.js");
+const EVENT_NAMES = require("./eventConstants.js");
+const ERROR_MESSAGES = require("./errorMessages.js");
 
 const supabase = Supabase.createClient(
   process.env.SUPABASE_URL ?? "",
@@ -39,9 +39,8 @@ redisClient.on("error", (err) => {
 })();
 
 const allowedOrigins = [
-  "localhost:*",
-  "http://localhost:*",
-  "place-7abfailk0-amartyas-projects-204b1997.vercel.app"
+  "localhost",
+  "vercel.app"
 ]
 
 const app = Express();
@@ -49,11 +48,18 @@ app.use(cors({ origin: allowedOrigins }));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (allowedOrigins.some((allowedOrigin) => origin?.includes(allowedOrigin))) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'), true)
+      }
+    },
+    methods: ["GET", "POST"],
   },
 });
 
-const PORT = parseInt(process.env.PORT || "3000", 10);
+const PORT = process.env.PORT || "3000";
 
 app.get("/", (req, res) => {
   res.send("<h1>Reddit Place Clone Backend</h1>");
