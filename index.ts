@@ -1,22 +1,22 @@
-import dotenv from 'dotenv';
+import * as dotenv from "dotenv";
 
-const nodeEnv = process.env.NODE_ENV || 'development';
+const nodeEnv = process.env.NODE_ENV || "development";
 
-if (nodeEnv === 'production') {
-  dotenv.config({ path: '.env.production' });
-  console.log('Loaded .env.production');
+if (nodeEnv === "production") {
+  dotenv.config({ path: ".env.production" });
+  console.log("Loaded .env.production");
 } else {
-  dotenv.config({ path: '.env.development' });
-  console.log('Loaded .env.development');
+  dotenv.config({ path: ".env.development" });
+  console.log("Loaded .env.development");
 }
 
 import * as Express from "express";
-import http from "http";
+import * as http from "http";
 import * as Supabase from "@supabase/supabase-js";
 import * as Redis from "redis";
 import { Server, Socket } from "socket.io";
-import { EVENT_NAMES } from "./eventConstants.ts";
-import { ERROR_MESSAGES } from "./errorMessages.ts";
+import { EVENT_NAMES } from "./eventConstants";
+import { ERROR_MESSAGES } from "./errorMessages";
 
 const supabase: Supabase.SupabaseClient = Supabase.createClient(
   process.env.SUPABASE_URL ?? "",
@@ -37,7 +37,7 @@ redisClient.on("error", (err: Error) => {
   console.log("Connected to Redis!");
 })();
 
-const app = Express.default();
+const app = Express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -49,6 +49,10 @@ const PORT: number = parseInt(process.env.PORT || "3000", 10);
 
 app.get("/", (req: Express.Request, res: Express.Response) => {
   res.send("<h1>Reddit Place Clone Backend</h1>");
+});
+
+app.get("/health", (req: Express.Request, res: Express.Response) => {
+  res.status(200).send("ok");
 });
 
 const CANVAS_SIZE: number = 50;
@@ -87,7 +91,7 @@ io.on("connection", async (socket: CustomSocket) => {
         `last_draw_time:${socket.username}`,
       );
       const lastDrawTime = lastDrawTimeStr
-        ? parseInt(lastDrawTimeStr, 10)
+        ? parseInt(String(lastDrawTimeStr), 10)
         : null;
       const now = Date.now();
       let remainingCooldown = 0;
@@ -151,7 +155,7 @@ io.on("connection", async (socket: CustomSocket) => {
         `last_draw_time:${socket.username}`,
       );
       const lastDrawTime = lastDrawTimeStr
-        ? parseInt(lastDrawTimeStr, 10)
+        ? parseInt(String(lastDrawTimeStr), 10)
         : null;
 
       const now = Date.now();
@@ -170,7 +174,7 @@ io.on("connection", async (socket: CustomSocket) => {
 
         let shouldUpdate = true;
         if (existingPixel) {
-          const parsedPixel: Pixel = JSON.parse(existingPixel);
+          const parsedPixel: Pixel = JSON.parse(String(existingPixel));
           if (parsedPixel.timestamp && parsedPixel.timestamp > timestamp) {
             shouldUpdate = false;
           }
