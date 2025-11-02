@@ -1,12 +1,4 @@
-export const ERROR_MESSAGES: {
-  REDIS_ERROR: string;
-  USERNAME_TAKEN: string;
-  SIGNUP_ERROR: string;
-  INVALID_PIXEL: string;
-  COOLDOWN_ACTIVE: string;
-  BACKUP_FETCH_ERROR: string;
-  BACKUP_ERROR: string;
-} = {
+export const ERROR_MESSAGES = {
   REDIS_ERROR: "Redis error: ",
   USERNAME_TAKEN: "Username already taken.",
   SIGNUP_ERROR: "An error occurred during signup.",

@@ -1,18 +1,4 @@
-export const EVENT_NAMES: {
-  LOGIN_SUCCESS: string;
-  LOGIN_FAILED: string;
-  SIGNUP_SUCCESS: string;
-  SIGNUP_FAILED: string;
-  COOLDOWN: string;
-  INITIAL_CANVAS: string;
-  UPDATE_PIXEL: string;
-  DRAW_PIXEL: string;
-  DISCONNECT: string;
-  CONNECT: string;
-  CONNECT_ERROR: string;
-  LOGIN: string;
-  SIGNUP: string;
-} = {
+export const EVENT_NAMES = {
   LOGIN_SUCCESS: "login_success",
   LOGIN_FAILED: "login_failed",
   SIGNUP_SUCCESS: "signup_success",

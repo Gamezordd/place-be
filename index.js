@@ -1,4 +1,5 @@
 import * as dotenv from "dotenv";
+import cors from "cors";
 
 const nodeEnv = process.env.NODE_ENV || "development";
 
@@ -10,24 +11,24 @@ if (nodeEnv === "production") {
   console.log("Loaded .env.development");
 }
 
-import * as Express from "express";
+import Express from "express";
 import * as http from "http";
 import * as Supabase from "@supabase/supabase-js";
 import * as Redis from "redis";
 import { Server, Socket } from "socket.io";
-import { EVENT_NAMES } from "./eventConstants";
-import { ERROR_MESSAGES } from "./errorMessages";
+import{ EVENT_NAMES } from "./eventConstants.js";
+import { ERROR_MESSAGES } from "./errorMessages.js";
 
-const supabase: Supabase.SupabaseClient = Supabase.createClient(
+const supabase = Supabase.createClient(
   process.env.SUPABASE_URL ?? "",
   process.env.SUPABASE_ANON_KEY ?? "",
 );
 
-const redisClient: Redis.RedisClientType = Redis.createClient({
+const redisClient = Redis.createClient({
   url: process.env.REDIS_URL,
 });
 
-redisClient.on("error", (err: Error) => {
+redisClient.on("error", (err) => {
   console.log(ERROR_MESSAGES.REDIS_ERROR, err);
 });
 
@@ -37,44 +38,42 @@ redisClient.on("error", (err: Error) => {
   console.log("Connected to Redis!");
 })();
 
+const allowedOrigins = [
+  "localhost:*",
+  "http://localhost:*",
+  "place-7abfailk0-amartyas-projects-204b1997.vercel.app"
+]
+
 const app = Express();
+app.use(cors({ origin: allowedOrigins }));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: allowedOrigins,
   },
 });
 
-const PORT: number = parseInt(process.env.PORT || "3000", 10);
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
-app.get("/", (req: Express.Request, res: Express.Response) => {
+app.get("/", (req, res) => {
   res.send("<h1>Reddit Place Clone Backend</h1>");
 });
 
-app.get("/health", (req: Express.Request, res: Express.Response) => {
+app.get("/health", (req, res) => {
   res.status(200).send("ok");
 });
 
-const CANVAS_SIZE: number = 50;
-const COOLDOWN_SECONDS: number = 20;
+const CANVAS_SIZE = 50;
+const COOLDOWN_SECONDS = 20;
 
-interface Pixel {
-  color: string;
-  timestamp: number;
-}
 
-interface Canvas {
-  [key: string]: Pixel;
-}
 
-interface CustomSocket extends Socket {
-  username?: string;
-}
 
-io.on("connection", async (socket: CustomSocket) => {
+
+io.on("connection", async (socket) => {
   console.log("a user connected");
 
-  socket.on(EVENT_NAMES.LOGIN, async (username: string) => {
+  socket.on(EVENT_NAMES.LOGIN, async (username) => {
     console.log("Login attempt for username:", username);
     const { data, error } = await supabase
       .from("users")
@@ -106,7 +105,7 @@ io.on("connection", async (socket: CustomSocket) => {
     }
   });
 
-  socket.on(EVENT_NAMES.SIGNUP, async (username: string) => {
+  socket.on(EVENT_NAMES.SIGNUP, async (username) => {
     console.log("Signup attempt for username:", username);
     const { data: existingUser, error: fetchError } = await supabase
       .from("users")
@@ -133,7 +132,7 @@ io.on("connection", async (socket: CustomSocket) => {
   });
 
   const canvas = await redisClient.hGetAll("canvas");
-  const parsedCanvas: Canvas = {};
+  const parsedCanvas = {};
   for (const key in canvas) {
     parsedCanvas[key] = JSON.parse(canvas[key]);
   }
@@ -141,12 +140,7 @@ io.on("connection", async (socket: CustomSocket) => {
 
   socket.on(
     EVENT_NAMES.DRAW_PIXEL,
-    async (data: {
-      x: number;
-      y: number;
-      color: string;
-      timestamp: number;
-    }) => {
+    async (data) => {
       if (!socket.username) {
         return;
       }
@@ -174,7 +168,7 @@ io.on("connection", async (socket: CustomSocket) => {
 
         let shouldUpdate = true;
         if (existingPixel) {
-          const parsedPixel: Pixel = JSON.parse(String(existingPixel));
+          const parsedPixel = JSON.parse(String(existingPixel));
           if (parsedPixel.timestamp && parsedPixel.timestamp > timestamp) {
             shouldUpdate = false;
           }
