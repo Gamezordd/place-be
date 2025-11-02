@@ -39,7 +39,8 @@ redisClient.on("error", (err) => {
 })();
 
 const allowedOrigins = [
-  "http://localhost:5137",
+  "http://localhost:5173",
+  "http://192.168.0.229:5173",
   "https://place-fe.vercel.app"
 ]
 
