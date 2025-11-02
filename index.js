@@ -71,11 +71,7 @@ app.get("/health", (req, res) => {
 });
 
 const CANVAS_SIZE = 50;
-const COOLDOWN_SECONDS = 20;
-
-
-
-
+const COOLDOWN_SECONDS = 10;
 
 io.on("connection", async (socket) => {
   console.log("a user connected");
@@ -108,7 +104,7 @@ io.on("connection", async (socket) => {
       }
       socket.emit(EVENT_NAMES.COOLDOWN, remainingCooldown);
     } else {
-      socket.emit(EVENT_NAMES.LOGIN_FAILED);
+      socket.emit(EVENT_NAMES.LOGIN_FAILED, ERROR_MESSAGES.LOGIN_ERROR);
     }
   });
 
